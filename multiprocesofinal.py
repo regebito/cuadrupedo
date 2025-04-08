@@ -6,6 +6,9 @@ import time
 margeninferior=-70
 margensuperior=70
 sensibilidad = 1.5
+numerodenoclicks=5
+numerodeclicks=5
+
 def detectar_mano(queue):
     """ Captura las coordenadas de todas las puntas de los dedos y las envía en tiempo real """
     mp_hands = mp.solutions.hands
@@ -35,7 +38,7 @@ def detectar_mano(queue):
 
                     # Obtener el tamaño de la pantalla
                     screen_w, screen_h = pyautogui.size()
-
+                    
                     # Obtener coordenadas de cada dedo
                     dedos["pulgar"] = (int(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP].x * screen_w * sensibilidad),
                                        int(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP].y * screen_h * sensibilidad))
@@ -51,7 +54,7 @@ def detectar_mano(queue):
                     
                     dedos["meñique"] = (int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].x * screen_w * sensibilidad),
                                         int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].y * screen_h * sensibilidad))
-                    
+                    print(dedos["pulgar"])
                     # Enviar el diccionario con las coordenadas de los dedos
                     queue.put(dedos)
 
@@ -68,6 +71,8 @@ def detectar_mano(queue):
     queue.put(None)  # Señal de terminación
 
 def mostrar_coordenadas(queue):
+    contadorclicks=0
+    contadornoclicks=0
     """ Recibe y muestra las coordenadas de todas las puntas de los dedos en tiempo real """
     while True:
         dedos = queue.get()
@@ -92,12 +97,21 @@ def mostrar_coordenadas(queue):
         last_x, last_y = smooth_x, smooth_y  # Actualizar última posición
 
         #print(distanciacorazonpulgarx,distanciacorazonpulgary)
-        
+        #print(f"Pulgar: {dedos['pulgar']} | Índice: {dedos['indice']} | Medio: {dedos['medio']} | Anular: {dedos['anular']} | Meñique: {dedos['meñique']}")        
         if (distanciacorazonpulgarx<margensuperior and distanciacorazonpulgarx>margeninferior)and(distanciacorazonpulgary<margensuperior and distanciacorazonpulgary>margeninferior):
-                pyautogui.click(button='left', clicks=1, interval=0.0, duration=0.0)
+            contadorclicks+=1
+            contadornoclicks=0
+            if contadorclicks==numerodeclicks:
+                pyautogui.mouseDown(button='left')  # Mantiene presionado el botón izquierdo
                 print("he clicado")
-        #print(f"Pulgar: {dedos['pulgar']} | Índice: {dedos['indice']} | Medio: {dedos['medio']} | Anular: {dedos['anular']} | Meñique: {dedos['meñique']}")
-
+                contadornoclicks=0
+        else:
+            contadorclicks=0
+            contadornoclicks+=1
+            if contadornoclicks==numerodenoclicks:
+                pyautogui.mouseUp(button='left')
+                print("he dejado de clicar")
+                contadorclicks=0 
 if __name__ == "__main__":
     queue = multiprocessing.Queue(maxsize=10)  # Buffer limitado para evitar acumulación
 
