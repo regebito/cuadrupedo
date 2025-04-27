@@ -3,12 +3,15 @@ import cv2
 import mediapipe as mp
 import pyautogui
 import time
+import numpy as np
+
+# Parámetro de tiempo
+
 margeninferior=-70
 margensuperior=70
 sensibilidad = 1.5
 numerodenoclicks=5
 numerodeclicks=5
-
 def detectar_mano(queue):
     """ Captura las coordenadas de todas las puntas de los dedos y las envía en tiempo real """
     mp_hands = mp.solutions.hands
@@ -54,7 +57,6 @@ def detectar_mano(queue):
                     
                     dedos["meñique"] = (int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].x * screen_w * sensibilidad),
                                         int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].y * screen_h * sensibilidad))
-                    print(dedos["pulgar"])
                     # Enviar el diccionario con las coordenadas de los dedos
                     queue.put(dedos)
 
@@ -70,11 +72,15 @@ def detectar_mano(queue):
     
     queue.put(None)  # Señal de terminación
 
+
 def mostrar_coordenadas(queue):
-    contadorclicks=0
-    contadornoclicks=0
+    vueltas = 1
+    vart = 1
+    contadorclicks = 0
+    contadornoclicks = 0
     """ Recibe y muestra las coordenadas de todas las puntas de los dedos en tiempo real """
     while True:
+        
         dedos = queue.get()
         if dedos is None:
             break  # Terminar proceso
@@ -85,19 +91,17 @@ def mostrar_coordenadas(queue):
         xmedio, ymedio = dedos["medio"] # Coordenadas del dedo medio
         xanular, yanular = dedos["anular"]  # Coordenadas del dedo anular
         xmeñique, ymeñique = dedos["meñique"]   # Coordenadas del dedo meñique
-        
+                
         distanciacorazonpulgarx= xmedio-xpulgar
         distanciacorazonpulgary= ymedio-ypulgar
 
-        smooth_x = (last_x * 0.7) + (xindice * 0.3)
-        smooth_y = (last_y * 0.7) + (yindice * 0.3)
-
-        pyautogui.moveTo(smooth_x, smooth_y, duration=0.01, _pause=False)  # Movimiento rápido sin pausa
-
-        last_x, last_y = smooth_x, smooth_y  # Actualizar última posición
-
-        #print(distanciacorazonpulgarx,distanciacorazonpulgary)
-        #print(f"Pulgar: {dedos['pulgar']} | Índice: {dedos['indice']} | Medio: {dedos['medio']} | Anular: {dedos['anular']} | Meñique: {dedos['meñique']}")        
+        suavizado_x = (last_x * 0.7) + (xindice * 0.3)
+        suavizado_y = (last_y * 0.7) + (yindice * 0.3)
+        
+        pyautogui.moveTo(suavizado_x, suavizado_y, duration=0.01, _pause=False)  # Movimiento rápido sin pausa
+        
+        last_x, last_y = suavizado_x, suavizado_y  # Actualizar última posición
+        
         if (distanciacorazonpulgarx<margensuperior and distanciacorazonpulgarx>margeninferior)and(distanciacorazonpulgary<margensuperior and distanciacorazonpulgary>margeninferior):
             contadorclicks+=1
             contadornoclicks=0
@@ -114,7 +118,6 @@ def mostrar_coordenadas(queue):
                 contadorclicks=0 
 if __name__ == "__main__":
     queue = multiprocessing.Queue(maxsize=10)  # Buffer limitado para evitar acumulación
-
     # Crear procesos
     proceso_deteccion = multiprocessing.Process(target=detectar_mano, args=(queue,))
     proceso_mostrar = multiprocessing.Process(target=mostrar_coordenadas, args=(queue,))
